@@ -19,7 +19,7 @@ jobs:
             -Name "fDenyTSConnections" -Value 0 -Force
           netsh advfirewall firewall add rule name="RDP" dir=in action=allow protocol=TCP localport=3389
 
-          $password = "M@zharas12"
+          $password = "M@zharas12"  # Permanent password
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
 
           if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) {
@@ -36,26 +36,29 @@ jobs:
       - name: Install and Connect Tailscale
         shell: pwsh
         run: |
-          Write-Host "Installing Tailscale..."
-          winget install --id=Tailscale.Tailscale --accept-package-agreements --accept-source-agreements -h
-          tailscale up --authkey ${{ secrets.TAILSCALE_AUTHKEY }} --hostname "GitHub-Runner-${{ github.run_id }}"
+          Write-Host "Downloading and installing Tailscale..."
+          $tsInstaller = "$env:TEMP\tailscale.exe"
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile $tsInstaller
+          Start-Process -FilePath $tsInstaller -ArgumentList "/quiet" -Wait
+          $tsExe = "C:\Program Files\Tailscale\tailscale.exe"
+          & "$tsExe" up --authkey "${{ secrets.TAILSCALE_AUTHKEY }}" --hostname "GitHub-Runner-${{ github.run_id }}"
           Write-Host "✅ Tailscale connection established."
 
-      - name: Install ProtonVPN (v4.3.5)
+      - name: Install ProtonVPN (Direct Download)
         shell: pwsh
         run: |
-          Write-Host "Downloading ProtonVPN v4.3.5..."
-          $installerPath = "$env:TEMP\ProtonVPN_v4.3.5_x64.exe"
-          Invoke-WebRequest -Uri "https://vpn.protondownload.com/download/ProtonVPN_v4.3.5_x64.exe" -OutFile $installerPath
+          Write-Host "Downloading ProtonVPN..."
+          $vpnInstaller = "$env:TEMP\ProtonVPN.exe"
+          Invoke-WebRequest -Uri "https://vpn.protondownload.com/download/ProtonVPN_v4.3.5_x64.exe" -OutFile $vpnInstaller
           Write-Host "Installing ProtonVPN silently..."
-          Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
-          Write-Host "✅ ProtonVPN v4.3.5 installed successfully."
+          Start-Process -FilePath $vpnInstaller -ArgumentList "/quiet /norestart" -Wait
+          Write-Host "✅ ProtonVPN Installed Successfully."
 
       - name: Display RDP Details
         shell: pwsh
         run: |
           Write-Host "========== RDP ACCESS =========="
-          Write-Host "Use your Tailscale IP from dashboard"
+          Write-Host "Use Tailscale IP from dashboard"
           Write-Host "Username: RDP"
           Write-Host "Password: M@zharas12"
           Write-Host "================================"
